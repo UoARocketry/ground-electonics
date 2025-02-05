@@ -1,22 +1,32 @@
-import ReactDOM from "react-dom/client";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import Layout from "./components/Layout";
-import Home from "./components/Home";
-import PostUser from "./components/PostUser";
-import GetAllUser from "./components/GetAllUser";
+import { useState, useEffect } from 'react'
 
-export default function App() {
+function App() {
+  interface Data {
+    id: number;
+    data: number;
+    label: string;
+  }
+
+  const [data, setData] = useState<Data[]>([]);
+
+  useEffect(() => {
+    fetch("http://localhost:3001/api/all")
+      .then((res) => res.json())
+      .then((data) => setData(data));
+  }, []);
+
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Layout />}>
-        <Route index element={<Home />} />
-        <Route path="post" element={<PostUser />} />
-        <Route path="get" element={<GetAllUser />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
-  );
+    <>
+      <h1> Hello world </h1>
+      {data.length > 0 ? data.map((item) => (
+      <div key={item.id}>
+        <p>count = {item.id}</p>
+        <p>data = {item.data}</p>
+        <p>label = {item.label}</p>
+      </div>
+    )) : 'No data'}
+    </>
+  )
 }
-const root = ReactDOM.createRoot(document.getElementById('root')!);
-root.render(<App />);
+
+export default App

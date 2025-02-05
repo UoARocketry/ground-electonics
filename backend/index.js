@@ -1,61 +1,52 @@
-import pg from "pg";
-import express from "express";
-import bodyParser from "body-parser";
+require("dotenv").config({ path: "../.env" });
+const mariadb = require("mariadb/callback");
+const express = require("express");
+var cors = require("cors");
 
-const { Client } = pg;
+console.log(process.env.DB_HOST);
 
-const client = new Client({
-  user: "postgres",
-  host: "db",
-  database: "postgres",
-  password: "1234",
-  port: 5432,
+const pool = mariadb.createPool({
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASS,
+  database: process.env.DB_NAME,
 });
-client.connect();
 
-const createTable = async () => {
-  await client.query(`CREATE TABLE IF NOT EXISTS users 
-    (id serial PRIMARY KEY, name VARCHAR (255) UNIQUE NOT NULL, 
-    email VARCHAR (255) UNIQUE NOT NULL, age INT NOT NULL);`);
-};
+// Get a connection from the pool
+pool.getConnection((err, connection) => {
+  if (err) {
+    console.error("Error connecting to MariaDB:", err);
+    return;
+  }
 
-createTable();
+  console.log("Connected to MariaDB!");
+
+  // Use the connection for database operations
+
+  // Release the connection when done
+  connection.release();
+});
+
+// createTable();
 
 const app = express();
 app.use(express.json());
+app.use(cors());
 app.use(express.urlencoded({ extended: true }));
 
 app.get("/api", (req, res) => res.send("Hello World!"));
 
 app.get("/api/all", async (req, res) => {
-  try {
-    const response = await client.query(`SELECT * FROM users`);
-
-    if (response) {
-      res.status(200).send(response.rows);
+  pool.query("SELECT * FROM data", (err, results) => {
+    if (err) {
+      console.error("Error querying the database:", err);
+      return;
     }
-  } catch (error) {
-    res.status(500).send("Error");
-    console.log(error);
-  }
+
+    // 'results' contains the rows retrieved from the database
+    console.log("Query results:", results);
+    res.json(results);
+  });
 });
 
-app.post("/api/form", async (req, res) => {
-  try {
-    const name = req.body.name;
-    const email = req.body.email;
-    const age = req.body.age;
-
-    const response = await client.query(
-      `INSERT INTO users(name, email, age) VALUES ('${name}', '${email}', ${age});`
-    );
-    if (response) {
-      res.status(200).send(req.body);
-    }
-  } catch (error) {
-    res.status(500).send("Error");
-    console.log(error);
-  }
-});
-
-app.listen(3000, () => console.log(`App running on port 3000.`));
+app.listen(3001, () => console.log(`App running on port 3001.`));
