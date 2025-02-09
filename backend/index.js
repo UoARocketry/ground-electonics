@@ -48,14 +48,21 @@ wss.on("connection", (ws) => {
   var lastID = null;
 
   setInterval(() => {
-    pool.query("SELECT * FROM data WHERE id > " + (lastID ?? 0) + " ORDER BY id ASC", (err, results) => {
-      if (err) {
-        console.error("Error querying the database:", err);
+    pool.query("SELECT * FROM data WHERE id > " + (lastID ?? 0), (error, results) => {
+      if (error) {
+        console.error("Error querying the database:", error);
         return;
       }
       if (results.length == 0) return;
-      lastID = results[results.length - 1].id; // Set lastID to the last element in the result list
-      ws.send(JSON.stringify(results));
+      pool.query("SELECT * FROM data ORDER BY id ASC", (err, res) => {
+        if (err) {
+          console.error("Error querying the database:", err);
+          return;
+        }
+        lastID = res[res.length - 1].id; // Set lastID to the last element in the result list
+        console.log("Query results:", res);
+        ws.send(JSON.stringify(res));
+      });
     });
   }, 500);
 
