@@ -54,28 +54,39 @@ const RotatingSphere = ({ position }: { position: THREE.Vector3 }) => {
         </mesh>
     );
 };
-const ThreeScene = () => {
-    const [data, setData] = React.useState<THREE.Vector3[]>([]);
 
-    useEffect(() => {
-        const connection = new WebSocket("/ws");
-        connection.onmessage = (e) => {
-            const data = JSON.parse(e.data);
-            const points = data.map((point: { id: number, x: number, y: number, z: number }) => { return new THREE.Vector3(point.x, point.y, point.z) });
-            console.log(points);
-            setData(points);
-        }
-    }, []);
+const GroundPlane = () => {
+
+    return (
+        <mesh position={[0, 0, 0]}>
+            <planeGeometry args={[1000, 1000]} />
+            <meshStandardMaterial color="green" opacity={0.5} />
+        </mesh>
+    );
+}
+const ThreeScene = ({positions} : {positions: THREE.Vector3[]}) => {
+
+    // useEffect(() => {
+    //     const connection = new WebSocket("/ws");
+    //     connection.onmessage = (e) => {
+    //         const data = JSON.parse(e.data);
+    //         const points = data.map((point: { id: number, x: number, y: number, z: number }) => { return new THREE.Vector3(point.x, point.y, point.z) });
+    //         console.log(points);
+    //         setData(points);
+    //     }
+    // }, []);
 
 
     return (
-        <Canvas style={{ height: '100vh' }}>
+        <Canvas style={{ height: '100vh' }}
+            camera={{ position: [0, 0, 50] }}>
             <ambientLight />
             <pointLight position={[10, 10, 10]} />
             <OrbitControls />
             <RotatingBox />
-            <RotatingSphere position={data[data.length - 1]} />
-            <Line position={data} />
+            {/* <GroundPlane /> */}
+            <RotatingSphere position={positions[positions.length - 1]} />
+            <Line position={positions} />
         </Canvas>
     );
 };
