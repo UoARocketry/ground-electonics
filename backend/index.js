@@ -2,6 +2,8 @@ require("dotenv").config({ path: "../.env" });
 const mariadb = require("mariadb/callback");
 const express = require("express");
 var cors = require("cors");
+const WebSocket = require("ws");
+const { ER_SELF_SIGNED } = require("mariadb/lib/misc/errors");
 
 console.log(process.env.DB_HOST);
 
@@ -27,12 +29,44 @@ pool.getConnection((err, connection) => {
   connection.release();
 });
 
+
+
 // createTable();
 
 const app = express();
 app.use(express.json());
 app.use(cors());
 app.use(express.urlencoded({ extended: true }));
+
+
+const wss = new WebSocket.Server({ port: 3002 });
+wss.on("connection", (ws) => {
+  ws.on("message", (message) => {
+    console.log(`Received message => ${message}`);
+  });
+  ws.send("Hello! Message From Server!!");
+
+  var lastID = null;
+
+  setInterval(() => {
+    pool.query("SELECT * FROM data ORDER BY id DESC LIMIT 1", (err, results) => {
+      if (err) {
+        console.error("Error querying the database:", err);
+        return;
+      }
+      if (lastID == null || lastID != results[0].id) {
+        lastID = results[0].id;
+        ws.send(JSON.stringify(results));
+      }
+
+
+    });
+  }, 500);
+
+  ws.on("close", () => {
+    console.log("Client disconnected");
+  });
+});
 
 app.get("/api", (req, res) => res.send("Hello World!"));
 
