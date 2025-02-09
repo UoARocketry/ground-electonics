@@ -44,22 +44,18 @@ wss.on("connection", (ws) => {
   ws.on("message", (message) => {
     console.log(`Received message => ${message}`);
   });
-  ws.send("Hello! Message From Server!!");
-
+  
   var lastID = null;
 
   setInterval(() => {
-    pool.query("SELECT * FROM data ORDER BY id DESC LIMIT 1", (err, results) => {
+    pool.query("SELECT * FROM data WHERE id > " + (lastID ?? 0) + " ORDER BY id ASC", (err, results) => {
       if (err) {
         console.error("Error querying the database:", err);
         return;
       }
-      if (lastID == null || lastID != results[0].id) {
-        lastID = results[0].id;
-        ws.send(JSON.stringify(results));
-      }
-
-
+      if (results.length == 0) return;
+      lastID = results[results.length - 1].id; // Set lastID to the last element in the result list
+      ws.send(JSON.stringify(results));
     });
   }, 500);
 
