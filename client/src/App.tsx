@@ -20,7 +20,7 @@ function App() {
         <h1>GPS Location:</h1>
         <p>Latitude: 0</p>
         <p>Longitude: 0</p>
-        <p>Height: {data.length ? data[data.length - 1].z : "unknown"}</p>
+        <p>Height: {data.length ? data[data.length - 1].y : "unknown"}</p>
       </div>
     </div>
   );
