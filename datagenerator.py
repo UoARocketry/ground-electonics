@@ -24,19 +24,9 @@ position = convert_to_cartesian(position)
 
 print(root)
 
-data = []
-
-for i in range(10):
-    data.append(convert_to_spherical(position))
-    requests.post(url, json = {"alt": data[-1][0] - 6371000, "lat": data[-1][1], "lon": data[-1][2]})
-    position[0] += 10
-    position[1] += 10
+for i in range(11):
+    position[0] = root[0] + i*10
+    position[1] = root[1] + -0.01*i*10*(i*10 - 100)
+    data = convert_to_spherical(position)
+    requests.post(url, json = {"alt": data[0] - 6371000, "lat": data[1], "lon": data[2]})
     sleep(1)
-    
-
-print(root)
-print([convert_to_cartesian(i) for i in data])
-for i in data:
-    i = convert_to_cartesian(i)
-    print("x: ", i[0] - root[0], "y: ", i[1] - root[1], "z: ", i[2] - root[2])
-    # print("x: ", i[0], "y: ", i[1], "z: ", i[2])
