@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
@@ -12,7 +12,7 @@ const RotatingBox = () => {
         }
     });
     return (
-        <mesh ref={mesh} position={[-2, 0, 0]}>
+        <mesh ref={mesh} position={[0, 0, 0]}>
             <boxGeometry args={[1, 1, 1]} />
             <meshStandardMaterial color="orange" />
         </mesh>
@@ -55,31 +55,21 @@ const RotatingSphere = ({ position }: { position: THREE.Vector3 }) => {
     );
 };
 
-const GroundPlane = () => {
+// For adding in the ground at a later date if required
+// const GroundPlane = () => {
 
-    return (
-        <mesh position={[0, 0, 0]}>
-            <planeGeometry args={[1000, 1000]} />
-            <meshStandardMaterial color="green" opacity={0.5} />
-        </mesh>
-    );
-}
-const ThreeScene = ({positions} : {positions: THREE.Vector3[]}) => {
+//     return (
+//         <mesh position={[0, 0, 0]}>
+//             <planeGeometry args={[1000, 1000]} />
+//             <meshStandardMaterial color="green" opacity={0.5} />
+//         </mesh>
+//     );
+// }
 
-    // useEffect(() => {
-    //     const connection = new WebSocket("/ws");
-    //     connection.onmessage = (e) => {
-    //         const data = JSON.parse(e.data);
-    //         const points = data.map((point: { id: number, x: number, y: number, z: number }) => { return new THREE.Vector3(point.x, point.y, point.z) });
-    //         console.log(points);
-    //         setData(points);
-    //     }
-    // }, []);
-
-
+const ThreeScene = ({ positions }: { positions: THREE.Vector3[] }) => {
     return (
         <Canvas style={{ height: '100vh' }}
-            camera={{ position: [0, 0, 50] }}>
+            camera={{ position: [0, 0, 50], far: 5000 }}>
             <ambientLight />
             <pointLight position={[10, 10, 10]} />
             <OrbitControls />

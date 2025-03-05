@@ -4,6 +4,7 @@ const express = require("express");
 var cors = require("cors");
 const WebSocket = require("ws");
 const { ER_SELF_SIGNED } = require("mariadb/lib/misc/errors");
+const PoolCallback = require("mariadb/lib/pool-callback");
 
 console.log(process.env.DB_HOST);
 
@@ -41,12 +42,21 @@ wss.on("connection", (ws) => {
   });
 
 
-  pool.query("SELECT x, y, z FROM relitive ORDER BY id ASC", (err, res) => {
+  pool.query("SELECT x, y, z FROM gps ORDER BY id ASC", (err, res) => {
     if (err) {
       console.error("Error querying the database:", err);
       return;
     }
-    ws.send(JSON.stringify(res));
+    //Get last known GPS coordinate
+    pool.query("SELECT lat, lon, alt FROM gps ORDER BY id DESC LIMIT 1", (error, respose) => {
+      if (err) {
+        console.error("Error querying the database:", err);
+        return;
+      }
+      console.log(respose);
+      ws.send(JSON.stringify({"relitive": res, "gps": respose[0]}));
+    } )
+
   });
 
   console.log("Client connected");
@@ -61,6 +71,9 @@ wss.on("connection", (ws) => {
 
 app.get("/api", (req, res) => res.send("Hello World!"));
 
+var root_pos = null;
+
+
 app.post("/api/update", (req, res) => {
 
   r = 6371000 + req.body.alt;
@@ -68,59 +81,45 @@ app.post("/api/update", (req, res) => {
   y = r*Math.sin(req.body.lat)*Math.sin(req.body.lon)
   z = r*Math.cos(req.body.lon)
 
-  pool.query('SELECT x, y, z FROM cartesian ORDER BY id DESC LIMIT 1', (err, res) => {
-    if (err) {
-      console.error("Error querying the database:", err);
-      return;
+  if (root_pos == null) {
+    console.log("Root position not set, setting to current position");
+    pool.query('SELECT absx, absy, absz FROM gps ORDER BY id DESC LIMIT 1', (err, res) => {
+      if (err) {
+        console.error("Error querying the database:", err);
+        return;
       }
-      const root = res[0];
-      if (root == null) {
-        //Update cartesian coordinates and insert first relitive coordinate
-        pool.query('INSERT INTO cartesian (x, y, z) VALUES (?, ?, ?)', [x, y, z], (err, res) => {
-          if (err) {
-            console.error("Error querying the database:", err);
-            return;
-          }
-        });
-
-        pool.query('INSERT INTO relitive (x, y, z) VALUES (?, ?, ?)', [0, 0, 0], (err, res) => {
-          if (err) {
-            console.error("Error querying the database:", err);
-            return;
-          }
-        });
-        return 
+      console.log(res);
+      root_pos = {'x': res[0]?.absx ?? null, 'y': res[0]?.absy ?? null, 'z': res[0]?.absz ?? null};
+      if (root_pos.x == null) {
+        root_pos = {'x': x, 'y': y, 'z': z};
+      }
+      pool.query('INSERT INTO gps (x, y, z, lat, lon, alt, absx, absy, absz) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', 
+      [x - root_pos.x, y - root_pos.y, z - root_pos.z, req.body.lat*180/Math.PI, req.body.lon*180/Math.PI,  req.body.alt, x, y, z], (err, res) => {
+      if (err) {
+        console.error("Error querying the database:", err);
+        return;
       }
 
-      pool.query('INSERT INTO relitive (x, y, z) VALUES (?, ?, ?)', [x - root.x, y - root.y, z - root.z], (err, res) => {
-        if (err) {
-          console.error("Error querying the database:", err);
-          return;
-        }
+      wss.clients.forEach((client) => {
+        client.send(JSON.stringify({"relitive" : [{'x': Math.round(x - root_pos.x), "y": Math.round(y - root_pos.y), "z": Math.round(z - root_pos.z)}], "gps": {"lat": req.body.lat*180/Math.PI, "lon" : req.body.lon*180/Math.PI, "alt": req.body.alt}}));      });
+    });
+    });
 
-        wss.clients.forEach((client) => {
-          pool.query("SELECT x, y, z FROM relitive ORDER BY id ASC", (err, res) => {
-            if (err) {
-              console.error("Error querying the database:", err);
-              return;
-            }
-            client.send(JSON.stringify(res));
-          });
-        });
+
+  } else {
+    pool.query('INSERT INTO gps (x, y, z, lat, lon, alt, absx, absy, absz) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', 
+      [x - root_pos.x, y - root_pos.y, z - root_pos.z, req.body.lat*180/Math.PI, req.body.lon*180/Math.PI, req.body.alt, x, y, z], (err, res) => {
+      if (err) {
+        console.error("Error querying the database:", err);
+        return;
+      }
+
+      wss.clients.forEach((client) => {
+          client.send(JSON.stringify({"relitive" : [{'x': Math.round(x - root_pos.x), "y": Math.round(y - root_pos.y), "z": Math.round(z - root_pos.z)}], "gps": {"lat": req.body.lat*180/Math.PI, "lon" : req.body.lon*180/Math.PI, "alt": req.body.alt}}));
       });
+    });
+  }
 
-      pool.query('INSERT INTO gps (r, lat, lon) VALUES (?, ?, ?)', [req.body.alt, req.body.lat, req.body.lon], (err, res) => {
-        if (err) {
-          console.error("Error querying the database:", err);
-          return;
-        }
-      });
-  });
-
-
-  // wss.clients.forEach((client) => {
-  //   client.send(JSON.stringify(req.body));
-  // });
 
   res.sendStatus(200);
 });
